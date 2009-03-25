@@ -7,6 +7,9 @@ module Delayed
       Merb.logger
     elsif defined?(RAILS_DEFAULT_LOGGER)
       RAILS_DEFAULT_LOGGER
+    else
+      require 'logger'
+      Logger.new(STDOUT)
     end
 
     def initialize(options={})

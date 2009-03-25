@@ -74,6 +74,21 @@ class Delayed::Job < ActiveRecord::Base
       return false
     end
   end
+  
+  # This is a good hook if you need to report job processing errors in additional or different ways
+  def log_exception(error)
+    logger.error "* [JOB] #{name} failed with #{error.class.name}: #{error.message} - #{attempts} failed attempts"
+    logger.error(error)
+  end
+  
+  
+  def log_info(msg)
+    logger.info msg
+  end
+  
+  def log_warn(msg)
+    logger.warn msg
+  end
 
 private
 
