@@ -1,12 +1,6 @@
-$:.unshift(File.dirname(__FILE__) + '/../lib')
-$:.unshift(File.dirname(__FILE__) + '/../../rspec/lib')
-
 require 'rubygems'
-require 'active_record'
+require 'activerecord'
 gem 'sqlite3-ruby'
-
-require File.dirname(__FILE__) + '/../init'
-require 'spec'
 
 # Set the storage adapter to ActiveRecord
 Delayed.setup_storage_adapter('ar_storage')
@@ -34,7 +28,6 @@ ActiveRecord::Schema.define do
   end
 
 end
-
 
 # Purely useful for test cases...
 class Story < ActiveRecord::Base

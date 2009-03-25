@@ -1,4 +1,5 @@
-require File.dirname(__FILE__) + '/database'
+require File.dirname(__FILE__) + '/spec_helper'
+require File.dirname(__FILE__) + '/ar_database'
 
 class SimpleJob
   cattr_accessor :runs; self.runs = 0
