@@ -7,6 +7,9 @@ gem 'sqlite3-ruby'
 
 require File.dirname(__FILE__) + '/../init'
 require 'spec'
+
+# Set the storage adapter to ActiveRecord
+Delayed.setup_storage_adapter('ar_storage')
   
 ActiveRecord::Base.logger = Logger.new('/tmp/dj.log')
 ActiveRecord::Base.establish_connection(:adapter => 'sqlite3', :database => '/tmp/jobs.sqlite')
