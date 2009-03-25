@@ -19,7 +19,7 @@ module M
   
 end
 
-describe Delayed::Job do
+describe "Delayed::Job" do
   before  do               
     Delayed::Job.max_priority = nil
     Delayed::Job.min_priority = nil      

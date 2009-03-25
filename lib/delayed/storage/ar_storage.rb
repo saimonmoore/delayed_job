@@ -9,8 +9,8 @@ class Delayed::Job < ActiveRecord::Base
 
   set_table_name :delayed_jobs
 
-  NextTaskSQL         = '(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?)) AND failed_at IS NULL'
-  NextTaskOrder       = 'priority DESC, run_at ASC'
+  NextTaskSQL         = '(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?)) AND failed_at IS NULL' unless Delayed::Job.const_defined?(:NextTaskSQL)
+  NextTaskOrder       = 'priority DESC, run_at ASC' unless Delayed::Job.const_defined?(:NextTaskOrder)
 
   # When a worker is exiting, make sure we don't have any locked jobs.
   def self.clear_locks!

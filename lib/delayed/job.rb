@@ -3,6 +3,10 @@ module Delayed
   def self.setup_storage_adapter(adapter_instance='ar_storage')
     require File.dirname(__FILE__) + "/storage/#{adapter_instance}"
   end
+  
+  def self.clear_storage_adapter
+    remove_const(:Job) if Object.const_defined?(:Job)
+  end
     
   class DeserializationError < StandardError
   end
@@ -11,9 +15,10 @@ module Delayed
       module Base
   
         def self.included(base)
-          Delayed::Job.const_set(:MAX_ATTEMPTS, 25)
-          Delayed::Job.const_set(:MAX_RUN_TIME, 4*60*60) #seconds
-          Delayed::Job.const_set(:ParseObjectFromYaml, /\!ruby\/\w+\:([^\s]+)/)
+          Delayed::Job.const_set(:MAX_ATTEMPTS, 25) unless Delayed::Job.const_defined?(:MAX_ATTEMPTS)
+          # seconds
+          Delayed::Job.const_set(:MAX_RUN_TIME, 4*60*60) unless Delayed::Job.const_defined?(:MAX_RUN_TIME)
+          Delayed::Job.const_set(:ParseObjectFromYaml, /\!ruby\/\w+\:([^\s]+)/) unless Delayed::Job.const_defined?(:ParseObjectFromYaml)
           
           base.class_eval do 
             
