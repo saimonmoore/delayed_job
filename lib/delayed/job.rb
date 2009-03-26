@@ -1,11 +1,11 @@
 module Delayed
   # Sets up the storage adapter. 
   def self.setup_storage_adapter(adapter_instance='ar_storage')
-    require File.dirname(__FILE__) + "/storage/#{adapter_instance}"
+    load File.dirname(__FILE__) + "/storage/#{adapter_instance}.rb"
   end
   
   def self.clear_storage_adapter
-    remove_const(:Job) if Object.const_defined?(:Job)
+    remove_const(:Job) if const_defined?(:Job)
   end
     
   class DeserializationError < StandardError

@@ -5,7 +5,7 @@ gem 'sqlite3-ruby'
 
 Spec::Runner.configure do |config|
   config.before do
-    # Set the storage adapter to ActiveRecord
+    # Set the storage adapter to TokyoCabinet
     Delayed.clear_storage_adapter
     Delayed.setup_storage_adapter('tokyo_storage')
   end  

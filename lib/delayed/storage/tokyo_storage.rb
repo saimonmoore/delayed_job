@@ -1,3 +1,5 @@
+require File.dirname(__FILE__) + "/tokyo_struct"
+
 # A job object that is persisted to the database.
 # Contains the work object as a YAML field.
 
@@ -15,18 +17,16 @@
 # table.datetime :created_at
 # table.datetime :updated_at
 # OpenStruct
-class Delayed::Job < ActiveRecord::Base
+class Delayed::Job < TokyoStruct
   
   include Delayed::Mixins::Base
-
-  set_table_name :delayed_jobs
 
   NextTaskSQL         = '(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?)) AND failed_at IS NULL' unless Delayed::Job.const_defined?(:NextTaskSQL)
   NextTaskOrder       = 'priority DESC, run_at ASC' unless Delayed::Job.const_defined?(:NextTaskOrder)
 
   # When a worker is exiting, make sure we don't have any locked jobs.
   def self.clear_locks!
-    update_all("locked_by = null, locked_at = null", ["locked_by = ?", worker_name])
+    update_all({:locked_by => nil, :locked_at => nil}, [:locked_by, :equals, worker_name])
   end
   
   def save_job!
