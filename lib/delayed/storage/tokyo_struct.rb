@@ -24,9 +24,14 @@ class TokyoStruct < OpenStruct
   def self.find(args)
     case args
     when String
-      instance = self.new(db[args])
-      instance.instance_variable_set('@id', args)
-      instance
+      entry = db[args]
+      if entry
+        instance = self.new(entry)
+        instance.instance_variable_set('@id', args)
+        instance        
+      else
+        nil
+      end
     when Hash
       conditions = args[:conditions]
       query_results = db.query { |q|
@@ -54,8 +59,13 @@ class TokyoStruct < OpenStruct
     }.each do |pk|
       instance = db[pk]
       db[pk] = instance.merge(stringify(new_data))
-    end
-    
+    end    
+  end
+  
+  # removes this entry from the db and freezes this object
+  def destroy
+    db.delete(id)
+    self.freeze
   end
   
   def id

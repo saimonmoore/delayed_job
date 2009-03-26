@@ -30,7 +30,7 @@ class Delayed::Job < TokyoStruct
   end
   
   def save_job!
-    save!
+    save
   end
   
   def destroy_job

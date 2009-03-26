@@ -40,6 +40,12 @@ describe "TokyoStruct" do
     struct.db[struct.id]['foo'].should == 'bar'
   end
   
+  it "should be able to remove the persitance entry via the destroy method" do
+    instance = TokyoStruct.create({:foo => 'bar'})
+    instance.destroy
+    TokyoStruct.find(instance.id).should be_nil
+  end
+  
   it "should persist Date values as time since epoch number string" do
     created_at = Date.today
     instance = TokyoStruct.create({:created_at => created_at})
