@@ -1,6 +1,6 @@
 require File.dirname(__FILE__) + '/spec_helper'
 require File.dirname(__FILE__) + '/tokyo_database'
-
+  
 describe "TokyoStruct" do
   before(:each) do
     TokyoStruct.db.clear
@@ -46,6 +46,11 @@ describe "TokyoStruct" do
     TokyoStruct.find(instance.id).should be_nil
   end
   
+  it "should store it's id as an entry in it's data" do
+    instance = TokyoStruct.create({:foo => 'bar'})
+    TokyoStruct.find(instance.id).db[instance.id]['id'].should == instance.id
+  end
+  
   it "should persist Date values as time since epoch number string" do
     created_at = Date.today
     instance = TokyoStruct.create({:created_at => created_at})
@@ -75,12 +80,29 @@ describe "TokyoStruct" do
     instance.db[instance.id]['num'].should == "1"
   end
   
+  it "should persist all other objects as yaml" do
+    instance = TokyoStruct.create({:array => [1,2,3]})
+    instance.db[instance.id]['array'].should == "--- \n- 1\n- 2\n- 3\n"
+  end
+  
   it "should be able to find a persisted instance using an id argument to the find class method" do
     original_instance = TokyoStruct.new({:foo => 'bar'})
     original_instance.save
     
     TokyoStruct.find(original_instance.id).foo.should == 'bar'
   end
+  
+  it "should be able to find a entries when value of key is nil" do
+    original_instance = TokyoStruct.new({:foo => nil})
+    original_instance.save
+    
+    results = TokyoStruct.find(:conditions => [['foo', :equals, '']])
+    results.should_not be_empty
+  end
+  
+  it "should not find entries for instances that have never been persisted" do
+    TokyoStruct.find(TokyoStruct.new.id).should be_nil
+  end  
   
   it "should have the same id when found as when it was originally instantiated" do
     original_instance = TokyoStruct.new({:foo => 'bar'})
@@ -113,6 +135,63 @@ describe "TokyoStruct" do
       ['foo', :equals, 'bar']
     ]).map {|i| i.id}.should == [ids[0], ids[1]]
   end
+  
+  it "should be able to find all entries by using the :all option to the find class method" do
+    ids = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:all).map {|i| i.id}.should == ids
+  end
+  
+  it "should be able to find all entries by using the :all option and sorted via the :order option to the find class method" do
+        ids = [{:foo => 'bar', :priority => 3}, {:foo => 'bar', :priority => 2}, {:baz => 'boo', :priority => 1}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:all, :order => ['priority', :numasc]).map {|i| i.id}.should == ids.reverse
+  end  
+  
+  it "should be able to sort results by using the :order option to the find class method" do
+    ids = [{:foo => 'bar', :priority => 3}, {:foo => 'bar', :priority => 2}, {:baz => 'boo', :priority => 1}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:conditions => [
+      ['foo', :equals, 'bar']
+    ], :order => ['priority', :numasc]).map {|i| i.id}.should == [ids[1], ids[0]]
+  end
+  
+  it "should be able to limit results by using the :limit option to the find class method" do
+    ids = [{:foo => 'bar', :priority => 3}, {:foo => 'bar', :priority => 2}, {:baz => 'boo', :priority => 1}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:conditions => [
+      ['foo', :equals, 'bar']
+    ], :order => ['priority', :numasc], :limit => 1).map {|i| i.id}.should == [ids[1]]
+  end
+  
+  it "should be able to offset results which have been limited by using the :offset option to the find class method" do
+    ids = [{:foo => 'bar', :priority => 3}, {:foo => 'bar', :priority => 2}, {:baz => 'boo', :priority => 1}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:conditions => [
+      ['foo', :equals, 'bar']
+    ], :order => ['priority', :numasc], :limit => 1, :offset => 1).map {|i| i.id}.should == [ids[0]]
+  end  
+
   it "should be equal to the original instance when found via the find class method" do
     original_instance = TokyoStruct.new({:foo => 'bar'})
     original_instance.save
@@ -133,4 +212,51 @@ describe "TokyoStruct" do
     
     [ids[0], ids[1]].map {|i| i.reload}.all? {|i| i.foo == 'baz'}.should be_true
   end
+  
+  it "should be able to override property accessors" do
+    class TokyoFoo < TokyoStruct
+      def run_at
+        data['run_at'] ? DateTime.parse(Time.at(data['run_at'].to_i).to_s) : nil
+      end
+    end
+    now = DateTime.parse(Time.now.to_s)
+    foo = TokyoFoo.create(:run_at => now)
+    
+    fu = TokyoFoo.find(foo.id)
+    fu.run_at.should == now
+  end
+  
+  it "should be able to find instances via their id using a :conditions hash argument to the find class method" do
+    ids = [{:foo => 'boo'}, {:foo => 'bar'}, {:baz => 'bif'}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:conditions => [
+      ['id', :equals, ids.first]
+    ]).map {|i| i.id}.should == [ids[0]]
+  end
+  
+  it "should be able to find instances via multiple ids using a :conditions hash argument to the find class method" do
+    ids = [{:foo => 'boo'}, {:foo => 'bar'}, {:baz => 'bif'}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find(:conditions => [
+      ['id', :matches, "([#{ids.first}|#{ids.last}])$"]
+    ]).map {|i| i.id}.should == [ids[0], ids[2]]
+  end
+  
+  it "should be able to find instances via an array of ids as the first argument to the find class method" do
+    ids = [{:foo => 'boo'}, {:foo => 'bar'}, {:baz => 'bif'}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance.id
+    end
+    
+    TokyoStruct.find([ids.first,ids.last]).map {|i| i.id}.should == [ids[0], ids[2]]
+  end 
 end

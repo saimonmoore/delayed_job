@@ -20,9 +20,38 @@ require File.dirname(__FILE__) + "/tokyo_struct"
 class Delayed::Job < TokyoStruct
   
   include Delayed::Mixins::Base
-
-  NextTaskSQL         = '(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?)) AND failed_at IS NULL' unless Delayed::Job.const_defined?(:NextTaskSQL)
-  NextTaskOrder       = 'priority DESC, run_at ASC' unless Delayed::Job.const_defined?(:NextTaskOrder)
+  
+  # Since we don't have AR, we push the timezone setting to this class (defaults to utc)
+  cattr_accessor :default_timezone
+  self.default_timezone = :utc
+  
+  def run_at
+    data['run_at'] ? DateTime.parse(Time.at(data['run_at'].to_i).to_s) : nil
+  end
+  
+  def locked_at
+    data['locked_at'] ? DateTime.parse(Time.at(data['locked_at'].to_i).to_s) : nil
+  end
+  
+  def failed_at
+    data['failed_at'] ? DateTime.parse(Time.at(data['failed_at'].to_i).to_s) : nil
+  end
+  
+  def created_at
+    data['created_at'] ? DateTime.parse(Time.at(data['run_at'].to_i).to_s) : nil
+  end
+  
+  def updated_at
+    data['created_at'] ? DateTime.parse(Time.at(data['run_at'].to_i).to_s) : nil
+  end
+  
+  def priority
+    data['priority'] ? data['priority'].to_i : nil
+  end
+  
+  def attempts
+    data['attempts'] ? data['attempts'].to_i : nil
+  end  
 
   # When a worker is exiting, make sure we don't have any locked jobs.
   def self.clear_locks!
@@ -43,25 +72,38 @@ class Delayed::Job < TokyoStruct
 
     time_now = db_time_now
 
-    sql = NextTaskSQL.dup
+    # NextTaskSQL= '(run_at <= ? AND (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?)) AND failed_at IS NULL'
+    # NextTaskOrder= 'priority DESC, run_at ASC'
 
-    conditions = [time_now, time_now - max_run_time, worker_name]
+    # sql = NextTaskSQL.dup
+
+    conditions = [
+      'run_at', :numge, time_now, # run_at >= time_now
+      'failed_at', :equals, ''    #failed_at is null
+    ]
 
     if self.min_priority
-      sql << ' AND (priority >= ?)'
-      conditions << min_priority
+      conditions << ['priority', :numge, min_priority]
     end
 
     if self.max_priority
-      sql << ' AND (priority <= ?)'
-      conditions << max_priority
+      conditions << ['priority', :numle, max_priority]
     end
 
-    conditions.unshift(sql)
-
-    records = ActiveRecord::Base.silence do
-      find(:all, :conditions => conditions, :order => NextTaskOrder, :limit => limit)
+    records = find(:conditions => conditions, :order => ['priority', :numdesc])
+    # find(:all, :conditions => conditions, :order => NextTaskOrder, :limit => limit)
+    
+    # We now need to filter the locked records
+    records = records.select do |r|
+      # (locked_at IS NULL OR locked_at < ?) OR (locked_by = ?))
+      (r.locked_at.nil? || r.locked_at == '' || r.locked_at.to_i == (time_now - max_run_time)) || r.locked_by == worker_name
     end
+    
+    # We need to sort by 'priority DESC, run_at ASC'
+    records = records.sort_by {|a| [-a.priority,a.run_at]}
+    
+    # then limit the results
+    records = records[0,5]
 
     records.sort_by { rand() }
   end
@@ -72,11 +114,13 @@ class Delayed::Job < TokyoStruct
     now = self.class.db_time_now
     affected_rows = if locked_by != worker
       # We don't own this job so we will update the locked_by name and the locked_at
-      self.class.update_all(["locked_at = ?, locked_by = ?", now, worker], ["id = ? and (locked_at is null or locked_at < ?)", id, (now - max_run_time.to_i)])
+      # self.class.update_all(["locked_at = ?, locked_by = ?", now, worker], ["id = ? and (locked_at is null or locked_at < ?)", id, (now - max_run_time.to_i)])
+      self.class.update_all({:locked_at => now, :locked_by => worker}, [[:id, :equals, id], [:locked_at, :numlt,now - max_run_time.to_i]])
     else
       # We already own this job, this may happen if the job queue crashes.
       # Simply resume and update the locked_at
-      self.class.update_all(["locked_at = ?", now], ["id = ? and locked_by = ?", id, worker])
+      # self.class.update_all(["locked_at = ?", now], ["id = ? and locked_by = ?", id, worker])
+      self.class.update_all({:locked_at => now}, [[:id, :equals, id], [:locked_by, :equals, worker]])
     end
     if affected_rows == 1
       self.locked_at    = now
@@ -114,7 +158,7 @@ private
   # Note: This does not ping the DB to get the time, so all your clients
   # must have syncronized clocks.
   def self.db_time_now
-    (ActiveRecord::Base.default_timezone == :utc) ? Time.now.utc : Time.now
+    (Delayed::Job.default_timezone == :utc) ? Time.now.utc : Time.now
   end
 
 protected

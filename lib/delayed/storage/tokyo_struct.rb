@@ -1,18 +1,5 @@
 require 'ostruct'
-
-class DateTime
-  
-  # Converts self to a Ruby Date object; time portion is discarded
-  def to_date
-    ::Date.new(year, month, day)
-  end
-
-  # Attempts to convert self to a Ruby Time object; returns self if out of range of Ruby Time class
-  # If self has an offset other than 0, self will just be returned unaltered, since there's no clean way to map it to a Time
-  def to_time
-    self.offset == 0 ? ::Time.utc_time(year, month, day, hour, min, sec) : self
-  end
-end
+require 'yaml'
 
 class TokyoStruct < OpenStruct
   @@db ||= Rufus::Tokyo::Table.new("#{self.name}.tdb")
@@ -21,27 +8,43 @@ class TokyoStruct < OpenStruct
     super(hash)
   end
   
-  def self.find(args)
-    case args
+  def self.find(*args)
+    return nil if args && args.empty?    
+    options = args.extract_options!
+    first_arg = args.first
+    case first_arg
     when String
-      entry = db[args]
+      entry = db[first_arg]
       if entry
         instance = self.new(entry)
-        instance.instance_variable_set('@id', args)
-        instance        
+        instance.instance_variable_set('@id', first_arg)
+        return instance        
       else
-        nil
+        return nil
       end
-    when Hash
-      conditions = args[:conditions]
-      query_results = db.query { |q|
-        conditions.each do |condition|
-          q.pk_only
-          q.add_condition(*condition)
-        end
-      }
-      query_results.map {|pk| find(pk) }
+    when Symbol
+      if first_arg == :all
+        return find(options.merge(:conditions => []))
+      else
+        raise("Unsupported option")
+      end
+    when Array
+      return find(options.merge(:conditions => [['id', :matches, "([#{first_arg.join('|')}])$"]]))
     end
+    
+    conditions = options[:conditions]
+    order = options[:order]
+    limit = options[:limit]
+    offset = options[:offset]
+    query_results = db.query { |q|
+      q.pk_only        
+      conditions.each do |condition|
+        q.add_condition(*condition)
+      end
+      q.order_by(*order) if order        
+      q.limit(limit, offset ? offset : -1) if limit
+    }
+    query_results ? query_results.map {|pk| find(pk)} : []
   end
   
   def self.create(hash = nil)
@@ -73,7 +76,7 @@ class TokyoStruct < OpenStruct
   end
   
   def save
-    db[id] = data
+    db[id] = data.merge('id' => id)
   end
   
   def reload
@@ -89,7 +92,7 @@ class TokyoStruct < OpenStruct
   end
   
   def data
-    stringify(@table)
+    stringify(@table).reject {|k,v| k == 'id'}
   end
   
   def new_record?
@@ -122,13 +125,19 @@ class TokyoStruct < OpenStruct
       hash.each do |k,v|
         h[k.to_s] = case v
         when DateTime
+          Time.parse(v.to_s).to_i.to_s
+        when Date, Time
           v.to_time.to_i.to_s          
-        when Date
-          v.to_time.to_i.to_s
-        when Time
-          v.to_time.to_i.to_s
-        else
+        when String
+          v
+        when Symbol
           v.to_s
+        when Numeric
+          v.to_s
+        when NilClass
+          ''
+        else
+          v.to_yaml
         end
       end
       h
