@@ -1,4 +1,6 @@
 require File.dirname(__FILE__) + "/tokyo_struct"
+require 'logger'
+require 'extlib' # sudo gem install extlib
 
 # A job object that is persisted to the database.
 # Contains the work object as a YAML field.
@@ -16,14 +18,25 @@ require File.dirname(__FILE__) + "/tokyo_struct"
 # table.datetime :failed_at
 # table.datetime :created_at
 # table.datetime :updated_at
-# OpenStruct
+
 class Delayed::Job < TokyoStruct
   
   include Delayed::Mixins::Base
+  include Extlib::Hook
+  
+  before :save, :set_run_at
   
   # Since we don't have AR, we push the timezone setting to this class (defaults to utc)
   cattr_accessor :default_timezone
   self.default_timezone = :utc
+  
+  cattr_accessor :logger
+  self.logger =  Logger.new(STDOUT)
+  
+  def initialize(*args)
+    options = args.extract_options!
+    super(args.first)
+  end  
   
   def run_at
     data['run_at'] ? DateTime.parse(Time.at(data['run_at'].to_i).to_s) : nil
@@ -78,8 +91,8 @@ class Delayed::Job < TokyoStruct
     # sql = NextTaskSQL.dup
 
     conditions = [
-      'run_at', :numge, time_now, # run_at >= time_now
-      'failed_at', :equals, ''    #failed_at is null
+      ['run_at', :numge, time_now], # run_at >= time_now
+      ['failed_at', :equals, '']    #failed_at is null
     ]
 
     if self.min_priority
@@ -115,7 +128,7 @@ class Delayed::Job < TokyoStruct
     affected_rows = if locked_by != worker
       # We don't own this job so we will update the locked_by name and the locked_at
       # self.class.update_all(["locked_at = ?, locked_by = ?", now, worker], ["id = ? and (locked_at is null or locked_at < ?)", id, (now - max_run_time.to_i)])
-      self.class.update_all({:locked_at => now, :locked_by => worker}, [[:id, :equals, id], [:locked_at, :numlt,now - max_run_time.to_i]])
+      self.class.update_all({:locked_at => now, :locked_by => worker}, [[:id, :equals, id], [:locked_at, :numlt, now - max_run_time.to_i]])
     else
       # We already own this job, this may happen if the job queue crashes.
       # Simply resume and update the locked_at
@@ -163,8 +176,13 @@ private
 
 protected
 
-  def before_save
+  # hook that ensures we have run_at set if not set manually
+  def set_run_at
     self.run_at ||= self.class.db_time_now
+  end
+  
+  def logger
+    self.class.logger
   end
 
 end

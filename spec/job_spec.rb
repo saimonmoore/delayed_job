@@ -29,6 +29,8 @@ describe "Delayed::Job" do
   
   before(:each) do
     SimpleJob.runs = 0
+    M::ModuleJob.runs = 0
+    ErrorJob.runs = 0
   end
 
   it "should set run_at automatically if not set" do

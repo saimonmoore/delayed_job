@@ -54,6 +54,10 @@ class TokyoStruct < OpenStruct
     instance
   end
   
+  def self.delete_all
+    db.clear
+  end
+  
   def self.update_all(new_data = {}, conditions = [])
     query_results = db.query { |q|
       conditions.each do |condition|
