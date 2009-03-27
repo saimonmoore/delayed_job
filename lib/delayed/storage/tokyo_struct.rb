@@ -30,6 +30,7 @@ class TokyoStruct < OpenStruct
       end
     when Array
       return find(options.merge(:conditions => [['id', :matches, "([#{first_arg.join('|')}])$"]]))
+      # return first_arg.map {|id| find(id.to_s)}
     end
     
     conditions = options[:conditions]
