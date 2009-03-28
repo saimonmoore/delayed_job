@@ -23,8 +23,13 @@ class TokyoStruct < OpenStruct
         return nil
       end
     when Symbol
-      if first_arg == :all
-        return find(options.merge(:conditions => []))
+      case first_arg
+      when :all
+        return find(options.reverse_merge(:conditions => []))
+      when :first
+        return find(options.reverse_merge(:conditions => [])).first
+      when :last
+        return find(options.reverse_merge(:conditions => [])).last
       else
         raise("Unsupported option")
       end
@@ -37,6 +42,7 @@ class TokyoStruct < OpenStruct
     order = options[:order]
     limit = options[:limit]
     offset = options[:offset]
+    return_count = options[:count]
     query_results = db.query { |q|
       q.pk_only        
       conditions.each do |condition|
@@ -45,7 +51,20 @@ class TokyoStruct < OpenStruct
       q.order_by(*order) if order        
       q.limit(limit, offset ? offset : -1) if limit
     }
-    query_results ? query_results.map {|pk| find(pk)} : []
+    query_results ? (return_count ? query_results.length : query_results.map {|pk| find(pk)}) : []
+  end
+  
+  def self.first(options = {})
+    find(:first, options)
+  end
+  
+  def self.last(options = {})
+    find(:last, options)
+  end
+  
+  def self.count(*args)
+    options = args.extract_options!
+    find(args.first || (options[:conditions] ? nil : :all), options.merge(:count => true))
   end
   
   def self.create(hash = nil)
@@ -67,13 +86,30 @@ class TokyoStruct < OpenStruct
     }.each do |pk|
       instance = db[pk]
       db[pk] = instance.merge(stringify(new_data))
-    end    
+    end
+    query_results.length
   end
   
   # removes this entry from the db and freezes this object
   def destroy
     db.delete(id)
     self.freeze
+  end
+  
+  # returns data directly from the db first or if not saved from the instance
+  def [](key)
+    result = (db_data ? db_data[key.to_s] : nil)
+    result ||= raw_data.has_key?(key.to_s) ? raw_data[key.to_s] : self.send(key.to_s, nil); nil
+    result
+  end
+  
+  def []=(key, value)
+    update_attribute(key, value)
+  end
+  
+  def update_attribute(key, value)
+    self.send("#{key}=", value)
+    save
   end
   
   def id
@@ -100,8 +136,16 @@ class TokyoStruct < OpenStruct
     stringify(@table).reject {|k,v| k == 'id'}
   end
   
+  def raw_data
+    @table
+  end  
+  
+  def db_data
+    db[id]
+  end
+  
   def new_record?
-    db[id].nil?
+    db_data.nil?
   end
   
   # Returns true if the +comparison_object+ is the same object, or is of the same type and has the same id.

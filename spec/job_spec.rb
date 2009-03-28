@@ -39,7 +39,7 @@ describe "Delayed::Job" do
 
   it "should not set run_at automatically if already set" do
     later = 5.minutes.from_now
-    Delayed::Job.create(:payload_object => ErrorJob.new, :run_at => later).run_at.should == later
+    Delayed::Job.create(:payload_object => ErrorJob.new, :run_at => later).run_at.to_i.should == later.to_i
   end
 
   it "should raise ArgumentError when handler doesn't respond_to :perform" do

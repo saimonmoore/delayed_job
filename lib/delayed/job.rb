@@ -58,7 +58,7 @@ module Delayed
             run_at   = args[1]
 
             # Assumes storage adapter implements #create class method
-            Job.create(:payload_object => object, :priority => priority.to_i, :run_at => run_at)
+            Job.create(:handler => object, :priority => priority.to_i, :run_at => run_at)
           end
           
           # Run the next job we can get an exclusive lock on.

@@ -22,6 +22,10 @@ describe "TokyoStruct" do
   it "should respond to any keys from supplied hash argument" do
     TokyoStruct.new({'foo' => 'bar'}).should respond_to(:foo)
   end
+  
+  it "should allow key lookup using a hash[] syntax" do
+    TokyoStruct.new({'foo' => 'bar'})['foo'].should == 'bar'
+  end  
 
   it "should respond to the :id message" do
     TokyoStruct.new.should respond_to(:id)
@@ -45,6 +49,13 @@ describe "TokyoStruct" do
     instance.destroy
     TokyoStruct.find(instance.id).should be_nil
   end
+  
+  it "should retreive value from the db directly first when using hash[] syntax" do
+    instance = TokyoStruct.create({:foo => ['bar']})
+    instance.bar = ['baz']
+    instance['foo'].should == ['bar'].to_yaml
+    instance['bar'].should == ['baz']
+  end  
 
   it "should store it's id as an entry in it's data" do
     instance = TokyoStruct.create({:foo => 'bar'})
@@ -145,6 +156,38 @@ describe "TokyoStruct" do
 
     TokyoStruct.find(:all).map {|i| i.id}.should == ids
   end
+  
+  it "should be able to find the first entry by using the :first option to the find class method" do
+    ids = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end
+
+    TokyoStruct.find(:first).id.should == ids.first.id
+  end
+  
+  it "should be able to find the first entry by using the ::first class method" do
+    ids = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end
+
+    TokyoStruct.first.id.should == ids.first.id
+  end
+  
+  it "should be able to find the last entry by using the ::last class method" do
+    ids = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end
+
+    TokyoStruct.last.id.should == ids.last.id
+  end
+  
+  it "should be able to find the first entry by using the :first option given the supplied conditions to the find class method" do
+    ids = [{:foo => 'bar'}, {:baz => 'bar'}, {:baz => 'boo'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end
+
+    TokyoStruct.find(:first, :conditions => [['baz', :equals, 'boo']]).id.should == ids[2].id
+  end  
 
   it "should be able to find all entries by using the :all option and sorted via the :order option to the find class method" do
         ids = [{:foo => 'bar', :priority => 3}, {:foo => 'bar', :priority => 2}, {:baz => 'boo', :priority => 1}].map do |hash|
@@ -212,6 +255,18 @@ describe "TokyoStruct" do
 
     [ids[0], ids[1]].map {|i| i.reload}.all? {|i| i.foo == 'baz'}.should be_true
   end
+  
+  it "should return the number of affected records when using #update_all" do
+    ids = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      instance = TokyoStruct.new(hash)
+      instance.save
+      instance
+    end
+
+    TokyoStruct.update_all({:foo => 'baz'}, [
+      ['foo', :equals, 'bar']
+    ]).should == 2
+  end  
 
   it "should be able to override property accessors" do
     class TokyoFoo < TokyoStruct
@@ -258,5 +313,30 @@ describe "TokyoStruct" do
     end
 
     TokyoStruct.find([ids.first,ids.last]).map {|i| i.id}.should == [ids[0], ids[2]]
+  end
+  
+  it "should be able to return the count of all entries in the table via the count class method" do
+    count = [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end.length
+    
+    TokyoStruct.count.should == count
+  end
+  
+  it "should be able to return the count of all entries with supplied conditions via the count class method" do
+    [{:foo => 'bar'}, {:foo => 'bar'}, {:baz => 'boo'}].map do |hash|
+      TokyoStruct.create(hash)
+    end
+    
+    TokyoStruct.count(:conditions => [
+      ['foo', :equals, 'bar']
+    ]).should == 2
+  end
+  
+  it "should be able to update a single attribute via the #update_attribute method" do
+    instance = TokyoStruct.create({'foo' => 'bar'})
+    instance.update_attribute('foo', 'baz')
+    instance.foo.should == 'baz'
+    TokyoStruct.find(instance.id).foo.should == 'baz'
   end
 end
