@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + "/tokyo_struct"
+require File.dirname(__FILE__) + "/../../tokyo_struct"
 require 'logger'
 require 'extlib' # sudo gem install extlib
 

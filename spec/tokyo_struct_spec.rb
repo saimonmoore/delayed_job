@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + '/spec_helper'
-require 'delayed/storage/tokyo_struct'
+require 'tokyo_struct'
 
 require 'rufus/tokyo'
 require 'fileutils'
