@@ -6,6 +6,7 @@ Spec::Runner.configure do |config|
     # Set the storage adapter to TokyoCabinet
     Delayed.clear_storage_adapter
     Delayed.setup_storage_adapter('tokyo_storage')
+    Delayed::Job.db.clear
     Delayed::Job.logger = Logger.new('/tmp/dj.log')    
   end  
 end

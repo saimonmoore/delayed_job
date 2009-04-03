@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.summary  = "Database-backed asynchronous priority queue system -- Extracted from Shopify"
   s.email    = "tobi@leetsoft.com"
   s.homepage = "http://github.com/tobi/delayed_job/tree/master"
-  s.description = "Delated_job (or DJ) encapsulates the common pattern of asynchronously executing longer tasks in the background. It is a direct extraction from Shopify where the job table is responsible for a multitude of core tasks."
+  s.description = "Delayed_job (or DJ) encapsulates the common pattern of asynchronously executing longer tasks in the background. It is a direct extraction from Shopify where the job table is responsible for a multitude of core tasks."
   s.authors  = ["Tobias Lütke"]
 
   # s.bindir = "bin"
@@ -20,17 +20,29 @@ Gem::Specification.new do |s|
 
   # run git ls-files to get an updated list
   s.files = %w[
-    MIT-LICENSE
-    README.textile
-    delayed_job.gemspec
-    init.rb
-    lib/delayed/job.rb
-    lib/delayed/message_sending.rb
-    lib/delayed/performable_method.rb
-    lib/delayed/worker.rb
-    lib/delayed_job.rb
-    tasks/jobs.rake
-    tasks/tasks.rb
+  MIT-LICENSE
+  README.textile
+  delayed_job.gemspec
+  init.rb
+  lib/delayed/core_extensions.rb
+  lib/delayed/job.rb
+  lib/delayed/message_sending.rb
+  lib/delayed/performable_method.rb
+  lib/delayed/storage/ar_storage.rb
+  lib/delayed/storage/tokyo_storage.rb
+  lib/delayed/storage/tokyo_struct.rb
+  lib/delayed/worker.rb
+  lib/delayed_job.rb
+  spec/ar_database.rb
+  spec/delayed_method_spec.rb
+  spec/job_spec.rb
+  spec/spec_helper.rb
+  spec/story_spec.rb
+  spec/tokyo_database.rb
+  spec/tokyo_spec.rb
+  spec/tokyo_struct_spec.rb
+  tasks/jobs.rake
+  tasks/tasks.rb
   ]
   s.test_files = %w[
     spec/database.rb
