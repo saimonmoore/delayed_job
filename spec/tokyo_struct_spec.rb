@@ -1,10 +1,20 @@
 require File.dirname(__FILE__) + '/spec_helper'
-require File.dirname(__FILE__) + '/tokyo_database'
+require 'delayed/storage/tokyo_struct'
+
+require 'rufus/tokyo'
+require 'fileutils'
 
 describe "TokyoStruct" do
-  before(:each) do
-    TokyoStruct.db.clear
+  before do
+    db_dir = File.join(File.dirname(__FILE__), 'db')
+    FileUtils.mkdir_p(File.join(File.dirname(__FILE__), 'db'))  
+    TokyoStruct.database = Rufus::Tokyo::Table.new(File.join(db_dir, "tokyo_struct.tdb"))
   end
+  
+  before(:each) do
+    TokyoStruct.database.clear
+  end
+
   it "should take a hash argument on initialization" do
     lambda {
       TokyoStruct.new({})

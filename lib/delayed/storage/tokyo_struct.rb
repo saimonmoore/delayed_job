@@ -2,7 +2,10 @@ require 'ostruct'
 require 'yaml'
 
 class TokyoStruct < OpenStruct
-  @@db ||= Rufus::Tokyo::Table.new("#{self.name}.tdb")
+  cattr_accessor :database
+  class << self
+    alias_method :db, :database
+  end
   
   def initialize(hash = nil)
     super(hash)
@@ -125,11 +128,8 @@ class TokyoStruct < OpenStruct
   end
 
   def db
-    self.class.db
-  end
-  
-  def self.db
-    @@db
+    raise "Missing tokyocabinet database!!\n(Options: Rufus::Tokyo::Table,  Rufus::Tokyo::TyrantTable, Rufus::Edo::Table,  Rufus::Edo::TyrantTable)" unless self.class.database && self.class.database.class.name.include?('Table')
+    self.class.database
   end
   
   def data
