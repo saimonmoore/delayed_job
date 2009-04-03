@@ -1,12 +1,21 @@
 require 'fileutils'
 
-desc "Run specs using the tokyo cabinet adapter"
-desc "Run specs using the AR adapter"
-
+desc "Run specs"
 task :specs do
+  Rake::Task['run_ar_specs'].invoke
+  Rake::Task['run_tokyo_specs'].invoke
 end
+
+desc "Run specs using the AR adapter"
 task :run_ar_specs do
+  specs = Dir["**/*_spec.rb"]
+  specs.each do |spec_path|
+    File.open(spec_path) do |f|
+      puts `spec #{spec_path} -O spec/spec.opts`
+    end
+  end
 end
+
 task :run_tokyo_specs do
   specs = Dir["**/*_spec.rb"].select {|filename| !%w(tokyo story).any? {|keyword| filename.include?(keyword)}}
   specs.each do |spec_path|
@@ -24,7 +33,7 @@ task :run_tokyo_specs do
       
       new_file_name = spec_path.gsub("_spec", "_tokyo_spec")
       File.open(new_file_name, 'wb') {|file| file.write(spec_string)}
-      puts `spec #{new_file_name}`
+      puts `spec #{new_file_name} -O spec/spec.opts`
       FileUtils.rm_rf new_file_name
     end
   end
