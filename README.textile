@@ -97,7 +97,26 @@ h3. Cleaning up
 
 You can invoke @rake jobs:clear@ to delete all jobs in the queue.
 
+h3. Different backends
+
+You can now use a different database backend if you like. Currently the only other one on offer is a tokyocabinet-based adapter (http://rufus.rubyforge.org/rufus-tokyo).
+To use the tokyocabinet adapter:
+
+<pre><code>
+  Delayed.clear_storage_adapter
+  Delayed.setup_storage_adapter('tokyo_storage')
+  Delayed::Job.database = Rufus::Tokyo::Table.new("delayed_job.tdb")
+</code></pre>
+
+To write your own adapter look at lib/delayed/storage/ar_storage.rb || tokyo_storage.rb for the minimum methods that need to be implemented.
+Another possibility is to write an adapter for the database you want for ActiveRecord and specify that in yur database.yml 
+but bare in mind that Delayed::Job ar_storage uses SQL-specific conditions to AR::Base.find to collect pending jobs. 
+
+e.g. the mongodb AR adapter (http://github.com/mongodb/activerecord-mongo-adapter/tree/master) does a good job but may choke on the SQL in Delayed::Job::NextTaskSQL
+
 h3. Changes
+
+* 1.8.0: Now supports different database backends (other than ActiveRecord). Bundles tokyocabinet adapter
 
 * 1.7.0: Added failed_at column which can optionally be set after a certain amount of failed job attempts. By default failed job attempts are destroyed after about a month. 
 
