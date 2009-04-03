@@ -1,3 +1,35 @@
+module Enumerable
+
+  # Calculates a sum from the elements. Examples:
+  #
+  #  payments.sum { |p| p.price * p.tax_rate }
+  #  payments.sum(&:price)
+  #
+  # The latter is a shortcut for:
+  #
+  #  payments.inject { |sum, p| sum + p.price }
+  #
+  # It can also calculate the sum without the use of a block.
+  #
+  #  [5, 15, 10].sum # => 30
+  #  ["foo", "bar"].sum # => "foobar"
+  #  [[1, 2], [3, 1, 5]].sum => [1, 2, 3, 1, 5]
+  #
+  # The default sum of an empty list is zero. You can override this default:
+  #
+  #  [].sum(Payment.new(0)) { |i| i.amount } # => Payment.new(0)
+  #
+  def sum(identity = 0, &block)
+    return identity unless size > 0
+
+    if block_given?
+      map(&block).sum
+    else
+      inject { |sum, element| sum + element }
+    end
+  end
+end
+
 class String
   def constantize
     Class.constantize(self)

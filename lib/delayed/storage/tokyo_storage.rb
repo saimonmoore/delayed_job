@@ -75,7 +75,7 @@ class Delayed::Job < TokyoStruct
 
   # When a worker is exiting, make sure we don't have any locked jobs.
   def self.clear_locks!
-    update_all({:locked_by => nil, :locked_at => nil}, [:locked_by, :equals, worker_name])
+    update_all({:locked_by => '', :locked_at => ''}, [['locked_by', :equals, worker_name]])
   end
   
   def save_job!
