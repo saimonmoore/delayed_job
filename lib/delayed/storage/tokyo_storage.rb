@@ -111,7 +111,7 @@ class Delayed::Job < TokyoStruct
     # sql = NextTaskSQL.dup
 
     conditions = [
-      ['run_at', :numge, time_now.to_i.to_s], # run_at >= time_now
+      ['run_at', :numle, time_now.to_i.to_s], # run_at <= time_now
       ['failed_at', :numequals, '0']    #failed_at is null
     ]
 
